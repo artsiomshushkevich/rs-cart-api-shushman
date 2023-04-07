@@ -3,11 +3,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 drop table if exists cart_items;
 drop table if exists carts;
 
+CREATE TYPE cart_status AS ENUM ('ORDERED', 'OPEN');
+
 CREATE TABLE carts (
    id uuid DEFAULT uuid_generate_v4(),
    user_id uuid NOT NULL,
    created_at date DEFAULT NOW(),
    updated_at date DEFAULT NOW(),
+   status cart_status DEFAULT 'OPEN',
    PRIMARY KEY (id)
 );
 
