@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cart, CartItem, CartRow, CartStatus } from '../models';
-import { pool } from '../../shared';
 import { ProductService } from '../../product/services';
 import { cartRowsToCart } from '../models-rules';
+import { PoolClient } from 'pg';
 
 const SELECT_CARTS = 'select * from carts';
 
@@ -30,8 +30,25 @@ const DELETE_CART_ITEM_BY_CART_PRODUCT_IDS = 'DELETE FROM cart_items where cart_
 export class CartService {
     constructor(private readonly productService: ProductService) {}
 
+    private client: PoolClient | null;
+
+    setClient(client: PoolClient | null) {
+        this.client = client;
+    }
+
+    getClient() {
+        return this.client;
+    }
+
+    releaseAndCleanClient() {
+        if (this.client) {
+            this.client.release();
+            this.client = null;
+        }
+    }
+
     async findByUserId(userId: string): Promise<Cart | null> {
-        const result = await pool.query<CartRow>(SELECT_CART_BY_USER_ID, [userId]);
+        const result = await this.getClient().query<CartRow>(SELECT_CART_BY_USER_ID, [userId]);
 
         const uniqueProducts = [...new Set(result.rows.map(row => row.product_id))].filter(product => !!product);
 
@@ -41,7 +58,7 @@ export class CartService {
     }
 
     async createByUserId(userId: string) {
-        await pool.query(INSERT_CART, [userId]);
+        await this.getClient().query(INSERT_CART, [userId]);
 
         return true;
     }
@@ -59,7 +76,7 @@ export class CartService {
     }
 
     async updateStatus(cartId: string, userId: string, status: CartStatus): Promise<boolean> {
-        await pool.query(UPDATE_CART_STATUS_BY_USER__CART_IDS, [status, userId, cartId]);
+        await this.getClient().query(UPDATE_CART_STATUS_BY_USER__CART_IDS, [status, userId, cartId]);
 
         return true;
     }
@@ -68,15 +85,15 @@ export class CartService {
         const cart = await this.findOrCreateByUserId(userId);
 
         if (cartItem.count === 0) {
-            await pool.query(DELETE_CART_ITEM_BY_CART_PRODUCT_IDS, [cart.id, cartItem.product.id]);
+            await this.getClient().query(DELETE_CART_ITEM_BY_CART_PRODUCT_IDS, [cart.id, cartItem.product.id]);
             return {
                 ...cart,
                 items: cart.items.filter(item => item.product.id !== cartItem.product.id)
             };
         }
 
-        await pool.query(DELETE_CART_ITEM_BY_CART_PRODUCT_IDS, [cart.id, cartItem.product.id]);
-        await pool.query(INSERT_CART_ITEM_BY_CART_ID, [cart.id, cartItem.product.id, cartItem.count]);
+        await this.getClient().query(DELETE_CART_ITEM_BY_CART_PRODUCT_IDS, [cart.id, cartItem.product.id]);
+        await this.getClient().query(INSERT_CART_ITEM_BY_CART_ID, [cart.id, cartItem.product.id, cartItem.count]);
 
         const existingItem = cart.items.find(item => item.product.id === cartItem.product.id);
 
@@ -90,7 +107,7 @@ export class CartService {
     }
 
     async removeByUserId(userId) {
-        await pool.query(DELETE_CART_BY_USER_ID, [userId]);
+        await this.getClient().query(DELETE_CART_BY_USER_ID, [userId]);
 
         return true;
     }

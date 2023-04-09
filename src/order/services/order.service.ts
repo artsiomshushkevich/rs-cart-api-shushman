@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OrderToInsert } from '../models';
-import { pool } from '../../shared';
+import { PoolClient } from 'pg';
 
 const INSERT_ORDER = `
   insert into orders (id, user_id, cart_id, status, payment, address, comments, total)
@@ -9,8 +9,25 @@ const INSERT_ORDER = `
 
 @Injectable()
 export class OrderService {
+    private client: PoolClient | null;
+
+    setClient(client: PoolClient | null) {
+        this.client = client;
+    }
+
+    getClient() {
+        return this.client;
+    }
+
+    releaseAndCleanClient() {
+        if (this.client) {
+            this.client.release();
+            this.client = null;
+        }
+    }
+
     async create(data: OrderToInsert): Promise<boolean> {
-        await pool.query(INSERT_ORDER, [
+        await this.getClient().query(INSERT_ORDER, [
             data.id,
             data.userId,
             data.cartId,
