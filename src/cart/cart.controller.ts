@@ -116,6 +116,11 @@ export class CartController {
                 status: order.status
             });
 
+            // for demostration purposes
+            if (order.comments === 'error') {
+                throw new Error('error to demostrate rollback');
+            }
+
             await this.cartService.updateStatus(cart.id, USER_UUID, 'ORDERED');
 
             await client.query('COMMIT');
