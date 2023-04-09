@@ -1,9 +1,10 @@
-import { Controller, Get, /*Delete, Put, Body, Req, Post,*/ HttpStatus } from '@nestjs/common';
+import { Controller, Get, Delete, Put, Body, Req, Post, HttpStatus } from '@nestjs/common';
 // import { Request } from 'express';
 import { OrderService } from '../order';
 
 import { calculateCartTotal } from './models-rules';
 import { CartService } from './services';
+import { CartItem } from './models';
 
 // as I didn't impmenet user API hardcoded uuid is used (but it's stored in DB as required for the task)
 const USER_UUID = 'f8c3834a-4cde-41a1-8274-aacba7651f20';
@@ -23,32 +24,29 @@ export class CartController {
         };
     }
 
-    // @Put()
-    // updateUserCart(@Req() req: Request, @Body() body) {
-    //     // TODO: validate body payload...
-    //     // const cart = this.cartService.updateByUserId(getUserIdFromRequest(req), body)
+    @Put()
+    async updateUserCart(@Body() body) {
+        const cart = await this.cartService.updateByUserId(USER_UUID, body as CartItem);
 
-    //     return {
-    //         statusCode: HttpStatus.OK,
-    //         message: 'OK',
-    //         data: {
-    //             cart: {
-    //                 title: 'Cart'
-    //             },
-    //             total: 0
-    //         }
-    //     };
-    // }
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'OK',
+            data: {
+                cart,
+                total: calculateCartTotal(cart)
+            }
+        };
+    }
 
-    // @Delete()
-    // clearUserCart(@Req() req: Request) {
-    //     this.cartService.removeByUserId('');
+    @Delete()
+    async clearUserCart() {
+        await this.cartService.removeByUserId(USER_UUID);
 
-    //     return {
-    //         statusCode: HttpStatus.OK,
-    //         message: 'OK'
-    //     };
-    // }
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'OK'
+        };
+    }
 
     // @Post('checkout')
     // checkout(@Req() req: Request, @Body() body) {

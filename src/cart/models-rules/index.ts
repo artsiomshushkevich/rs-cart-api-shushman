@@ -13,19 +13,17 @@ export function calculateCartTotal(cart: Cart): number {
         : 0;
 }
 
-export const cartRowsToCarts = (rows: CartRow[], products: Product[]): Cart[] => {
-    const carts: Cart[] = [];
+export const cartRowsToCart = (rows: CartRow[], products: Product[]): Cart | null => {
+    let cart: Cart | null;
 
     rows.forEach(row => {
-        const cart = carts.find(cart => cart.id === row.cart_id);
-
-        if (cart) {
+        if (cart && products.length) {
             cart.items.push({
                 product: products.find(product => product.id === row.product_id),
                 count: row.count
             });
-        } else {
-            carts.push({
+        } else if (!cart && products.length) {
+            cart = {
                 id: row.cart_id,
                 items: [
                     {
@@ -33,9 +31,14 @@ export const cartRowsToCarts = (rows: CartRow[], products: Product[]): Cart[] =>
                         count: row.count
                     }
                 ]
-            });
+            };
+        } else if (!cart && !products.length) {
+            cart = {
+                id: row.id,
+                items: []
+            };
         }
     });
 
-    return carts;
+    return cart;
 };
