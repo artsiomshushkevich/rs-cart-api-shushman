@@ -15,10 +15,12 @@ provider:
         DB_PASSWORD: ${env:DB_PASSWORD}
         DB_NAME: ${env:DB_NAME}
         DB_PORT: ${env:DB_PORT}
+        PRODUCTS_API_URL: ${env:PRODUCTS_API_URL}
 
 functions:
     main:
         handler: dist/main.handler
+        timeout: 10
         events:
             - http:
                   method: ANY
