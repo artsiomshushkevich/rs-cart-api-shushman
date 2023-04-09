@@ -1,12 +1,11 @@
-import { Controller, Get, Delete, Put, Body, Req, Post, HttpStatus } from '@nestjs/common';
-// import { Request } from 'express';
-import { OrderService } from '../order';
-
+import { Controller, Get, Delete, Put, Body, Post, HttpStatus } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
+import { OrderService, Order } from '../order';
 import { calculateCartTotal } from './models-rules';
 import { CartService } from './services';
 import { CartItem } from './models';
 
-// as I didn't impmenet user API hardcoded uuid is used (but it's stored in DB as required for the task)
+// as I didn't implement user API, hardcoded uuid will be  used down the controller (but it's stored in DB as required for the task)
 const USER_UUID = 'f8c3834a-4cde-41a1-8274-aacba7651f20';
 
 @Controller('api/profile/cart')
@@ -48,36 +47,58 @@ export class CartController {
         };
     }
 
-    // @Post('checkout')
-    // checkout(@Req() req: Request, @Body() body) {
-    //     const userId = '';
-    //     const cart = this.cartService.findByUserId(userId);
+    @Post('checkout')
+    async checkout(@Body() body: any) {
+        const cart = await this.cartService.findByUserId(USER_UUID);
 
-    //     if (!(cart && cart.items.length)) {
-    //         const statusCode = HttpStatus.BAD_REQUEST;
-    //         req.statusCode = statusCode;
+        if (!(cart && cart.items.length)) {
+            const statusCode = HttpStatus.BAD_REQUEST;
 
-    //         return {
-    //             statusCode,
-    //             message: 'Cart is empty'
-    //         };
-    //     }
+            return {
+                statusCode,
+                message: 'Cart is empty'
+            };
+        }
 
-    //     const { id: cartId, items } = cart;
-    //     const total = calculateCartTotal(cart);
-    //     const order = this.orderService.create({
-    //         ...body, // TODO: validate and pick only necessary data
-    //         userId,
-    //         cartId,
-    //         items,
-    //         total
-    //     });
-    //     this.cartService.removeByUserId(userId);
+        const { id: cartId } = cart;
+        const total = calculateCartTotal(cart);
 
-    //     return {
-    //         statusCode: HttpStatus.OK,
-    //         message: 'OK',
-    //         data: { order }
-    //     };
-    // }
+        const order: Order = {
+            id: uuidv4(),
+            userId: USER_UUID,
+            cartId: cartId,
+            total,
+            comments: body.address.comment || '',
+            delivery: {
+                type: 'STANDARD',
+                address: {
+                    address: body.address.address,
+                    firstName: body.address.firstName,
+                    lastName: body.address.lastName
+                }
+            },
+            payment: body.payment,
+            status: 'IN_PROGRESS',
+            items: cart.items
+        };
+
+        await this.orderService.create({
+            id: order.id,
+            userId: order.userId,
+            cartId: order.cartId,
+            total: order.total,
+            comments: order.comments,
+            address: JSON.stringify(order.delivery.address),
+            payment: JSON.stringify(order.payment),
+            status: order.status
+        });
+
+        await this.cartService.updateStatus(cart.id, USER_UUID, 'ORDERED');
+
+        return {
+            statusCode: HttpStatus.OK,
+            message: 'OK',
+            data: { order }
+        };
+    }
 }

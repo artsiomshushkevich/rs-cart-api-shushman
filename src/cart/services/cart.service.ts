@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Cart, CartItem, CartRow } from '../models';
+import { Cart, CartItem, CartRow, CartStatus } from '../models';
 import { pool } from '../../shared';
 import { ProductService } from '../../product/services';
 import { cartRowsToCart } from '../models-rules';
@@ -19,6 +19,8 @@ const INSERT_CART = `
 `;
 
 const DELETE_CART_BY_USER_ID = `delete from carts where user_id = $1`;
+
+const UPDATE_CART_STATUS_BY_USER__CART_IDS = 'update carts set status = $1 where user_id = $2 and id = $3';
 
 const INSERT_CART_ITEM_BY_CART_ID = 'insert into cart_items (cart_id, product_id, count) VALUES ($1, $2, $3)';
 
@@ -54,6 +56,12 @@ export class CartService {
         }
 
         return cart;
+    }
+
+    async updateStatus(cartId: string, userId: string, status: CartStatus): Promise<boolean> {
+        await pool.query(UPDATE_CART_STATUS_BY_USER__CART_IDS, [status, userId, cartId]);
+
+        return true;
     }
 
     async updateByUserId(userId: string, cartItem: CartItem): Promise<Cart> {
