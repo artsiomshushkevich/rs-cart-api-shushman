@@ -1,39 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { v4 } from 'uuid';
+import { OrderToInsert } from '../models';
+import { PoolClient } from 'pg';
 
-import { Order } from '../models';
+const INSERT_ORDER = `
+  insert into orders (id, user_id, cart_id, status, payment, address, comments, total)
+  values ($1, $2, $3, $4, $5, $6, $7, $8)
+`;
 
 @Injectable()
 export class OrderService {
-  private orders: Record<string, Order> = {}
+    private client: PoolClient | null;
 
-  findById(orderId: string): Order {
-    return this.orders[ orderId ];
-  }
-
-  create(data: any) {
-    const id = v4(v4())
-    const order = {
-      ...data,
-      id,
-      status: 'inProgress',
-    };
-
-    this.orders[ id ] = order;
-
-    return order;
-  }
-
-  update(orderId, data) {
-    const order = this.findById(orderId);
-
-    if (!order) {
-      throw new Error('Order does not exist.');
+    setClient(client: PoolClient | null) {
+        this.client = client;
     }
 
-    this.orders[ orderId ] = {
-      ...data,
-      id: orderId,
+    getClient() {
+        return this.client;
     }
-  }
+
+    releaseAndCleanClient() {
+        if (this.client) {
+            this.client.release();
+            this.client = null;
+        }
+    }
+
+    async create(data: OrderToInsert): Promise<boolean> {
+        await this.getClient().query(INSERT_ORDER, [
+            data.id,
+            data.userId,
+            data.cartId,
+            data.status,
+            data.payment,
+            data.address,
+            data.comments || '',
+            data.total
+        ]);
+
+        return true;
+    }
 }
