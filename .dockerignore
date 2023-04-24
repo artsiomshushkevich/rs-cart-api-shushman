@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.vscode
+.git
+README.md
+src/sql
+test
+**/*.spec.ts
+.elasticbeanstalk
+
